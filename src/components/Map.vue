@@ -9,7 +9,7 @@
           @selected="addCountry($event.item.cca3)"
       >
         <div slot-scope="{suggestion}" style="display: flex; align-items: center;">
-          <img :src="`/countries/${suggestion.item.cca3}.svg`"
+          <img :src="`/countries/${suggestion.item.cca3.toLowerCase()}.svg`"
                :style="{ display: 'flex', width: '25px', height: '25px', marginRight: '10px'}" width="50">
           <div style="{ display: 'flex', color: 'navyblue'}">{{ suggestion.item.name.common }}</div>
         </div>
@@ -125,7 +125,7 @@ export default {
 
       this.query = ''
 
-      fetch('/countries/' + countryCode + '.geo.json')
+      fetch('/countries/' + countryCode.toLowerCase() + '.geo.json')
           .then(response => response.json())
           .then(data => {
             this.$set(this.countryGeoData, countryCode, {
