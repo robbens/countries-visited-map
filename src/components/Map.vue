@@ -3,10 +3,10 @@
     <div class="sm:flex absolute top-0 right-0 left-0 z-10 m-2 sm:m-4">
       <vue-autosuggest
           class="sm:mr-4 mb-2 sm:mb-0"
-          v-model="query"
+          v-model="countryQuery"
           :suggestions="filteredCountries"
           :get-suggestion-value="getSuggestionValue"
-          :input-props="{id: 'autosuggest__input', class: 'input', placeholder: 'Enter a country'}"
+          :input-props="{id: 'autosuggest__input-country', class: 'input', placeholder: 'Enter a country'}"
           @selected="addCountry($event.item.cca3)"
       >
         <div
@@ -14,8 +14,9 @@
             style="display: flex; align-items: center;"
         >
           <img
-              :src="`/countries/${suggestion.item.cca3.toLowerCase()}.svg`"
-              class="flex w-10 h-10 mr-4"
+              :src="`/flags/${suggestion.item.cca2.toLowerCase()}.png`"
+              :key="suggestion.item.cca2"
+              class="flex w-10 mr-4"
           >
           <div class="flex text-gray-800">{{ suggestion.item.name.common }}</div>
         </div>
@@ -97,12 +98,7 @@
       </div>
     </div>
 
-    <Mapbox
-        style="height: 100vh;"
-        :zoom="2"
-        :center="[-3.749220, 40.463669]"
-        @click="test"
-    >
+    <Mapbox style="height: 100vh;" :zoom="2" :center="mapCenter">
       <MglGeojsonLayer
           v-for="country in filteredSelectedCountries"
           :key="country"
@@ -130,8 +126,10 @@ export default {
   components: {Mapbox, MglGeojsonLayer, VueAutosuggest, MglMarker},
   data() {
     return {
-      query: '',
+      countryQuery: '',
       map: null,
+      mapCenter: [-3.749220, 40.463669],
+      countries: countries,
       selectedCountries: [],
       countryGeoData: {},
       cities: cities,
@@ -165,16 +163,6 @@ export default {
   },
 
   computed: {
-    filteredCities() {
-      if (!this.debouncedCityQuery) return [{data: []}]
-      return [
-        {
-          data: this.cities.filter(city => {
-            return city.name.toLowerCase().includes(this.debouncedCityQuery.toLowerCase())
-          })
-        }
-      ];
-    },
     filteredSelectedCountries() {
       return this.selectedCountries.filter(c => {
         return !!this.countryGeoData[c]
@@ -187,17 +175,27 @@ export default {
         return emojis[country.cca2]
       }).join('')
     },
-    countries() {
-      return countries.filter(c => c.independent)
-    },
     filteredCountriesByRegion() {
       return this.groupBy(this.countries, 'region')
     },
+    filteredCities() {
+      if (!this.debouncedCityQuery) return [{data: []}]
+
+      return [
+        {
+          data: this.cities.filter(city => {
+            return city.name.toLowerCase().includes(this.debouncedCityQuery.toLowerCase())
+          })
+        }
+      ];
+    },
     filteredCountries() {
+      if (!this.countryQuery || this.countryQuery.length < 2) return []
+
       return [
         {
           data: this.countries.filter(country => {
-            return country.name.common.toLowerCase().startsWith(this.query.toLowerCase())
+            return country.name.common.toLowerCase().startsWith(this.countryQuery.toLowerCase())
           })
         }
       ];
@@ -216,9 +214,6 @@ export default {
       if (this.selectedCities.indexOf(city) === -1) {
         this.selectedCities.push(city)
       }
-    },
-    test(event) {
-      console.log(event)
     },
     initCountries(countries) {
       countries.forEach(this.addCountry)
@@ -243,7 +238,7 @@ export default {
 
       this.selectedCountries.push(countryCode)
 
-      this.query = ''
+      this.countryQuery = ''
 
       fetch('/countries/' + countryCode.toLowerCase() + '.geo.json')
           .then(response => response.json())
