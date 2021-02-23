@@ -65,6 +65,7 @@ export default {
       const options = {
         includeScore: true,
         keys: ['name'],
+        threshold: 0.25,
       }
 
       const fuse = new Fuse(this.cities, options, this.citiesIndex)
@@ -86,7 +87,7 @@ export default {
 
   methods: {
     initCities(cities) {
-      cities.forEach(city => this.$emit('selected', city))
+      cities.forEach(this.addCity)
     },
     addCity(city) {
       this.query = ''
