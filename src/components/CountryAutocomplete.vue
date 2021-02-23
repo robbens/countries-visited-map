@@ -75,7 +75,7 @@ export default {
     this.initCountries(selectedCountries)
 
     // Build Fuse.js index
-    this.countriesIndex = Fuse.createIndex(['name'], this.countries)
+    this.countriesIndex = Fuse.createIndex(['name.common'], this.countries)
   },
 
   methods: {
