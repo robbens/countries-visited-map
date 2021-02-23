@@ -171,6 +171,8 @@ export default {
       return +(Math.round(num + 'e+1') + 'e-1');
     },
     fetchGeoJson(country) {
+      if (!country) return
+
       const countryCode = country.cca3
 
       if (countryCode in this.countryGeoData) return
