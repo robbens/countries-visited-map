@@ -1,41 +1,19 @@
 <template>
   <div>
     <div class="sm:flex absolute top-0 right-0 left-0 z-10 m-2 sm:m-4">
-      <vue-autosuggest
-          class="sm:mr-4 mb-2 sm:mb-0"
-          v-model="countryQuery"
-          :suggestions="filteredCountries"
-          :get-suggestion-value="getSuggestionValue"
-          :input-props="{id: 'autosuggest__input-country', class: 'input', placeholder: 'Enter a country'}"
-          @selected="addCountry($event.item.cca3)"
-      >
-        <div
-            slot-scope="{suggestion}"
-            style="display: flex; align-items: center;"
-        >
-          <img
-              :src="`/flags/${suggestion.item.cca2.toLowerCase()}.png`"
-              :key="suggestion.item.cca2"
-              class="flex w-10 mr-4"
-          >
-          <div class="flex text-gray-800">{{ suggestion.item.name.common }}</div>
-        </div>
-      </vue-autosuggest>
 
-      <vue-autosuggest
-          class="sm:mr-4 mb-2 sm:mb-0"
-          v-model="cityQuery"
-          :suggestions="filteredCities"
-          :get-suggestion-value="(city) => city.country"
-          :input-props="{id: 'autosuggest__input', class: 'input', placeholder: 'Enter a city'}"
-          @selected="addCity($event.item)"
-      >
-        <div slot-scope="{suggestion}">
-          <div class="flex text-gray-800">
-            {{ suggestion.item.name }}, {{ getCityCountry(suggestion.item) }}
-          </div>
-        </div>
-      </vue-autosuggest>
+      <CountryAutocomplete
+          :countries="countries"
+          :selected="selectedCountries"
+          @selected="selectedCountries.push($event)"
+      />
+
+      <CityAutocomplete
+          :cities="cities"
+          :countries="countries"
+          :selected="selectedCities"
+          @selected="selectedCities.push($event)"
+      />
 
       <div class="flex">
         <button
@@ -68,7 +46,7 @@
 
 
     <div
-        class="sm:grid-cols-3 fixed top-0 left-0 right-0 bottom-0 z-50 bg-white px-3 sm:px-5 text-left overflow-auto"
+        class="sm:grid-cols-3 xl:grid-cols-6 fixed top-0 left-0 right-0 bottom-0 z-50 bg-white px-3 sm:px-5 text-left overflow-auto"
         :class="{'grid': modalOpen, 'hidden': !modalOpen}"
     >
       <span
@@ -80,8 +58,8 @@
           v-for="(countries, region) in filteredCountriesByRegion"
           :key="region"
       >
-        <h2 class="font-medium text-2xl p-2 pt-6 sticky top-0 bg-white">{{ region }}</h2>
-        <div class="grid grid-cols-2">
+        <h2 class="font-medium text-2xl p-2 pt-6 sticky top-0 bg-white z-10">{{ region }}</h2>
+        <div class="">
           <div
               v-for="country in countries"
               class="cursor-pointer relative text-sm sm:text-lg p-2"
@@ -100,51 +78,59 @@
 
     <Mapbox style="height: 100vh;" :zoom="2" :center="mapCenter">
       <MglGeojsonLayer
-          v-for="country in filteredSelectedCountries"
-          :key="country"
-          :sourceId="country"
-          :source="countryGeoData[country]['source']"
-          :layerId="country"
-          :layer="countryGeoData[country]['layer']"
+          v-for="country in countriesWithGeoData"
+          :key="country.cca3"
+          :sourceId="country.cca3"
+          :source="countryGeoData[country.cca3]['source']"
+          :layerId="country.cca3"
+          :layer="countryGeoData[country.cca3]['layer']"
       />
-      <MglMarker v-for="city in selectedCities" :coordinates="[city.lng, city.lat]" :key="city.lng.toString() + city.lat.toString()"></MglMarker>
+      <MglMarker v-for="city in selectedCities" :coordinates="[city.lng, city.lat]" :key="city.lng.toString() + city.lat.toString()">
+        <MglPopup anchor="top" :close-on-click="true">
+          {{ city.name }}
+        </MglPopup>
+      </MglMarker>
     </Mapbox>
   </div>
 </template>
 
 <script>
-import countries from './countries.json'
-import cities from './cities.json'
-import emojis from './emojis.js'
-import {VueAutosuggest} from 'vue-autosuggest';
-import Mapbox from "@/components/Mapbox";
-import {MglGeojsonLayer, MglMarker} from "vue-mapbox";
-import {debounce} from "lodash";
+import {MglGeojsonLayer, MglMarker, MglPopup} from "vue-mapbox"
+
+import countries from '../data/countries.json'
+import cities from '../data/cities.json'
+import emojis from '../data/emojis.js'
+
+import Mapbox from "@/components/Mapbox.vue"
+import CityAutocomplete from "@/components/CityAutocomplete.vue"
+import CountryAutocomplete from "@/components/CountryAutocomplete.vue"
 
 export default {
   name: 'Map',
-  components: {Mapbox, MglGeojsonLayer, VueAutosuggest, MglMarker},
+  components: {CountryAutocomplete, CityAutocomplete, Mapbox, MglGeojsonLayer, MglMarker, MglPopup},
   data() {
     return {
-      countryQuery: '',
+      // Raw data
+      cities: cities,
+      countries: countries,
+
+      // Selected
+      selectedCities: [],
+      selectedCountries: [],
+
+      // Geo data
+      countryGeoData: {},
+
+      // Mapbox
       map: null,
       mapCenter: [-3.749220, 40.463669],
-      countries: countries,
-      selectedCountries: [],
-      countryGeoData: {},
-      cities: cities,
-      selectedCities: [],
-      cityQuery: '',
-      debouncedCityQuery: '',
+
+      // Misc
       modalOpen: false,
     }
   },
 
   created() {
-    const selectedCountries = JSON.parse(window.localStorage.getItem('selectedCountries')) || []
-
-    this.initCountries(selectedCountries)
-
     window.addEventListener('keyup', e => {
       if (this.modalOpen && e.key === 'Escape') {
         this.modalOpen = false
@@ -153,71 +139,28 @@ export default {
   },
 
   watch: {
-    selectedCountries(val) {
-      window.localStorage.setItem('selectedCountries', JSON.stringify(val))
+    selectedCountries() {
+      this.selectedCountries.forEach(this.fetchGeoJson)
     },
-
-    cityQuery: debounce(function(val) {
-      this.debouncedCityQuery = val
-    }, 500)
   },
 
   computed: {
-    filteredSelectedCountries() {
+    countriesWithGeoData() {
       return this.selectedCountries.filter(c => {
-        return !!this.countryGeoData[c]
+        return c.cca3 in this.countryGeoData
       })
     },
     selectedCountriesAsEmojis() {
       return this.selectedCountries.map(c => {
-        const country = this.countries.find(c2 => c2.cca3 === c)
-
-        return emojis[country.cca2]
+        return emojis[c.cca2]
       }).join('')
     },
     filteredCountriesByRegion() {
       return this.groupBy(this.countries, 'region')
     },
-    filteredCities() {
-      if (!this.debouncedCityQuery) return [{data: []}]
-
-      return [
-        {
-          data: this.cities.filter(city => {
-            return city.name.toLowerCase().includes(this.debouncedCityQuery.toLowerCase())
-          })
-        }
-      ];
-    },
-    filteredCountries() {
-      if (!this.countryQuery || this.countryQuery.length < 2) return []
-
-      return [
-        {
-          data: this.countries.filter(country => {
-            return country.name.common.toLowerCase().startsWith(this.countryQuery.toLowerCase())
-          })
-        }
-      ];
-    }
   },
 
   methods: {
-    getCityCountry(city) {
-      const country = this.countries.find(c => c.cca2 === city.country)
-
-      if (!country) return ''
-
-      return country.name.common
-    },
-    addCity(city) {
-      if (this.selectedCities.indexOf(city) === -1) {
-        this.selectedCities.push(city)
-      }
-    },
-    initCountries(countries) {
-      countries.forEach(this.addCountry)
-    },
     groupBy(list, props) {
       return list.reduce((a, b) => {
         (a[b[props]] = a[b[props]] || []).push(b);
@@ -227,18 +170,10 @@ export default {
     roundNumber(num) {
       return +(Math.round(num + 'e+1') + 'e-1');
     },
-    getSuggestionValue(suggestion) {
-      return suggestion.item.name.common;
-    },
-    async addCountry(countryCode) {
-      if (this.selectedCountries.includes(countryCode)) {
-        this.selectedCountries = this.selectedCountries.filter(c => c !== countryCode)
-        return;
-      }
+    fetchGeoJson(country) {
+      const countryCode = country.cca3
 
-      this.selectedCountries.push(countryCode)
-
-      this.countryQuery = ''
+      if (countryCode in this.countryGeoData) return
 
       fetch('/countries/' + countryCode.toLowerCase() + '.geo.json')
           .then(response => response.json())
@@ -262,17 +197,15 @@ export default {
                 }
               }
             })
-          }).then(() => {
-        // this.selectedCountries.push(countryCode)
-      })
-    },
+          })
+    }
   },
 }
 </script>
 
 <style>
-.demo {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+.mapboxgl-popup-close-button, .mapboxgl-popup-close-button:focus {
+  outline: 0;
 }
 
 .autosuggest__results-container ul {
