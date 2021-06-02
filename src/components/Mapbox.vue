@@ -20,7 +20,7 @@ export default {
   },
   data() {
     return {
-      accessToken: 'pk.eyJ1Ijoicm9iaW5uaWxzc29uIiwiYSI6ImNra3VyYmc4dTBsOW8ycWp1MGhmdThsbDYifQ.RMxB_3zYENoZGikqqdsSEw',
+      accessToken: 'pk.eyJ1Ijoicm9iaW5uaWxzc29uIiwiYSI6ImNrcGZjaW1qazB1bmUybm84eXdwZzdhcDEifQ.9sSAqbg1PbcKqtjiWWlN5Q',
       mapStyle: 'mapbox://styles/mapbox/streets-v11',
     };
   },
