@@ -1,12 +1,19 @@
 <template>
   <div>
     <div class="sm:flex absolute top-0 right-0 left-0 z-10 m-2 sm:m-4">
+      <div class="flex-1 relative sm:mr-4 mb-2 sm:mb-0">
+        <CountryAutocomplete
+            :countries="countries"
+            :selected="selectedCountries"
+            @selected="selectedCountries.push($event)"
+        />
 
-      <CountryAutocomplete
-          :countries="countries"
-          :selected="selectedCountries"
-          @selected="selectedCountries.push($event)"
-      />
+        <button
+            class="absolute text-white opacity-90 hover:opacity-100 bg-blue-900 bottom-1.5 p-2 r-1 right-1.5 rounded top-1.5 leading-none"
+            @click="modalOpen = !modalOpen"
+            title="Select multiple countries"
+        >M</button>
+      </div>
 
       <CityAutocomplete
           :cities="cities"
@@ -16,12 +23,6 @@
       />
 
       <div class="flex">
-<!--        <button-->
-<!--            class="bg-blue-900 mr-2 lg:mr-4 rounded-md text-white text-xs font-medium whitespace-nowrap px-4"-->
-<!--            @click="modalOpen = !modalOpen"-->
-<!--        >Select multiple-->
-<!--        </button>-->
-
         <div
             class="mr-2 lg:mr-4 rounded-full text-white flex items-center content-center text-xs font-medium p-3 lg:px-4 whitespace-nowrap bg-indigo-700"
             title="Number of visited countries"
@@ -46,36 +47,49 @@
     </div>
 
 
-    <div
-        class="sm:grid-cols-3 xl:grid-cols-6 fixed top-0 left-0 right-0 bottom-0 z-50 bg-white px-3 sm:px-5 text-left overflow-auto"
-        :class="{'grid': modalOpen, 'hidden': !modalOpen}"
+    <transition
+        enter-active-class="transition-all transition-fastest ease-out-quad"
+        leave-active-class="transition-all transition-fastest ease-in-quad"
+        enter-class="opacity-0 scale-70"
+        enter-to-class="opacity-100 scale-100"
+        leave-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-70"
     >
-      <span
-          class="cursor-pointer fixed mr-2 mt-5 px-4 right-0 text-4xl top-0 z-10"
-          @click="modalOpen = false"
-      >&times;</span>
-
       <div
-          v-for="(countries, region) in filteredCountriesByRegion"
-          :key="region"
+          v-if="modalOpen"
+          class="absolute right-0 scale-100 grid sm:grid-cols-3 xl:grid-cols-6 origin-top-right z-50 bg-white px-3 sm:px-5 text-left overflow-auto"
       >
-        <h2 class="font-medium text-2xl p-2 pt-6 sticky top-0 bg-white z-10">{{ region }}</h2>
-        <div class="">
-          <div
-              v-for="country in countries"
-              class="cursor-pointer relative text-sm sm:text-lg p-2"
-              :key="country.cca3"
-              :class="{'font-medium': selectedCountries.includes(country.cca3)}"
-              @click="addCountry(country.cca3)"
-          >
-            <span v-if="selectedCountries.includes(country.cca3)">
-              ✅
-            </span>
-            {{ country.name.common }}
+        <span
+            class="z-30 bg-blue-900 bottom-0 cursor-pointer fixed hover:translate-y-1.5 mb-4 px-7 py-3 rounded-2xl shadow-2xl text-lg text-white"
+            style="left: 50%; transform: translateX(-50%)"
+            @click="modalOpen = false"
+        >
+          <span class="font-bold">CLOSE</span> <span class="hidden lg:inline">(ESC)</span>
+        </span>
+
+        <div
+            v-for="(countries, region) in filteredCountriesByRegion"
+            :key="region"
+        >
+          <h2 class="font-medium text-2xl p-2 pt-6 sticky top-0 bg-white z-10">{{ region }}</h2>
+          <div class="">
+            <div
+                v-for="country in countries"
+                class="cursor-pointer relative text-sm sm:text-lg p-2"
+                :key="country.cca3"
+                :class="{'font-medium': selectedCountries.some(c => country.cca3 === c.cca3)}"
+                @click="toggleCountry(country)"
+            >
+              <span v-if="selectedCountries.some(c => country.cca3 === c.cca3)">
+                ✅
+              </span>
+              {{ country.name.common }}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </transition>
+
 
     <Mapbox style="height: 100vh;" :zoom="2" :center="mapCenter">
       <MglGeojsonLayer
@@ -162,6 +176,14 @@ export default {
   },
 
   methods: {
+    toggleCountry(country) {
+      if (this.selectedCountries.includes(country)) {
+        const index = this.selectedCountries.findIndex(c => c.cca3 === country.cca3)
+        this.selectedCountries.splice(index, 1)
+      } else {
+        this.selectedCountries.push(country)
+      }
+    },
     selectEmojis() {
         window.gtag('event', 'clicked', {
           'event_category': 'emojis',
@@ -320,7 +342,7 @@ export default {
   cursor: pointer;
 }
 
-.input, #app .autocomplete-input {
+.input, .autocomplete-input {
   border: 1px solid #ccc;
   background-color: #fff;
   background-image: none;

@@ -2,7 +2,6 @@
   <form
       autocomplete="off"
       @submit="$event.preventDefault()"
-      class="sm:mr-4 mb-2 sm:mb-0 flex-1"
   >
     <autocomplete
         :search="search"
