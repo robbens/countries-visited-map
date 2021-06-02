@@ -5,7 +5,7 @@
       :suggestions="filteredCountries"
       :get-suggestion-value="(country) => country.item.item.name.common"
       :input-props="{class: 'input', placeholder: 'Enter a country'}"
-      @selected="addCountry($event.item.item)"
+      @selected="addCountry($event.item.item.cca3)"
   >
     <div
         slot-scope="{suggestion}"
@@ -51,10 +51,6 @@ export default {
   },
 
   watch: {
-    selected(val) {
-      window.localStorage.setItem('selectedCountries', JSON.stringify(val))
-    },
-
     query: debounce(function(val) {
       const options = {
         includeScore: true,
@@ -70,22 +66,24 @@ export default {
   },
 
   created() {
-    // Add countries saved in local storage
-    const selectedCountries = JSON.parse(window.localStorage.getItem('selectedCountries')) || []
-    this.initCountries(selectedCountries)
+    // // Add countries saved in local storage
+    // const selectedCountries = JSON.parse(window.localStorage.getItem('selectedCountries')) || []
+    //
+    // this.initCountries(selectedCountries)
 
     // Build Fuse.js index
     this.countriesIndex = Fuse.createIndex(['name.common'], this.countries)
   },
 
   methods: {
-    initCountries(countries) {
-      countries.forEach(this.addCountry)
-    },
+    // initCountries(countries) {
+    //   countries.forEach(this.addCountry)
+    // },
     addCountry(country) {
       this.query = ''
 
-      if (!this.selected.some(c => c.cca3 === country.cca3)) {
+      if (!this.selected.some(c => c === country)) {
+        if (!country) return
         this.$emit('selected', country)
       }
     },

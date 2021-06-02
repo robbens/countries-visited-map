@@ -31,7 +31,7 @@
         </div>
 
         <div
-            class="lg:mr-4 flex flex-1 items-center text-black cursor-pointer"
+            class="mr-2 lg:mr-4 flex flex-1 items-center text-black cursor-pointer"
         >
           <input
               class="input sm:w-24 w-full"
@@ -41,6 +41,18 @@
               readonly
           >
         </div>
+
+        <button
+            class="bg-green-500 rounded-md text-white text-xs font-medium whitespace-nowrap px-4"
+            @click="register"
+        >Save
+        </button>
+
+        <button
+            class="bg-green-500 rounded-md text-white text-xs font-medium whitespace-nowrap px-4"
+            @click="login"
+        >Restore
+        </button>
       </div>
     </div>
 
@@ -79,13 +91,14 @@
     <Mapbox style="height: 100vh;" :zoom="2" :center="mapCenter">
       <MglGeojsonLayer
           v-for="country in countriesWithGeoData"
-          :key="country.cca3"
-          :sourceId="country.cca3"
-          :source="countryGeoData[country.cca3]['source']"
-          :layerId="country.cca3"
-          :layer="countryGeoData[country.cca3]['layer']"
+          :key="country"
+          :sourceId="country"
+          :source="countryGeoData[country]['source']"
+          :layerId="country"
+          :layer="countryGeoData[country]['layer']"
       />
-      <MglMarker v-for="city in selectedCities" :coordinates="[city.lng, city.lat]" :key="city.lng.toString() + city.lat.toString()">
+      <MglMarker v-for="city in computedSelectedCities" :coordinates="[city.lng, city.lat]"
+                 :key="city.lng.toString() + city.lat.toString()">
         <MglPopup anchor="top" :close-on-click="true">
           {{ city.name }}
         </MglPopup>
@@ -95,15 +108,20 @@
 </template>
 
 <script>
+// Mapbox
 import {MglGeojsonLayer, MglMarker, MglPopup} from "vue-mapbox"
 
+// Data
 import countries from '../data/countries.json'
 import cities from '../data/cities.json'
 import emojis from '../data/emojis.js'
 
+// Components
 import Mapbox from "@/components/Mapbox.vue"
 import CityAutocomplete from "@/components/CityAutocomplete.vue"
 import CountryAutocomplete from "@/components/CountryAutocomplete.vue"
+
+import Firebase from '../firebase.js';
 
 export default {
   name: 'Map',
@@ -127,7 +145,24 @@ export default {
 
       // Misc
       modalOpen: false,
+
+      user: {
+        loggedIn: false,
+        data: {}
+      }
     }
+  },
+
+  mounted() {
+    Firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        this.user.loggedIn = true;
+        this.user.data = user;
+      } else {
+        this.user.loggedIn = false;
+        this.user.data = {};
+      }
+    })
   },
 
   created() {
@@ -136,24 +171,51 @@ export default {
         this.modalOpen = false
       }
     })
+
+    // Add countries saved in storage
+    this.getFromDB().then(({selectedCountries, selectedCities}) => {
+      selectedCountries.forEach(country => {
+        this.selectedCountries.push(country)
+        // if (!this.selectedCountries.some(c => c === country)) {
+        //   if (!country) return
+        //   this.selectedCountries.push(country)
+        // }
+      })
+
+      selectedCities.forEach(city => {
+        this.selectedCities.push(city)
+        // if (!this.selectedCities.some(c => c === city)) {
+        //   if (!city) return
+        //   this.selectedCities.push(city)
+        // }
+      })
+    })
   },
 
   watch: {
-    selectedCountries() {
-      this.selectedCountries.forEach(this.fetchGeoJson)
+    selectedCountries(val) {
+      val.forEach(this.fetchGeoJson)
+      this.saveToDB()
     },
+    selectedCities() {
+      this.saveToDB()
+    }
   },
 
   computed: {
-    countriesWithGeoData() {
-      return this.selectedCountries.filter(c => {
-        return c.cca3 in this.countryGeoData
+    isLoggedIn() {
+      return this.user.loggedIn
+    },
+    computedSelectedCities() {
+      return this.selectedCities.map(c => {
+        return this.cities.find(city => city.geonameid === c)
       })
     },
+    countriesWithGeoData() {
+      return this.selectedCountries.filter(c => c in this.countryGeoData)
+    },
     selectedCountriesAsEmojis() {
-      return this.selectedCountries.map(c => {
-        return emojis[c.cca2]
-      }).join('')
+      return this.selectedCountries.map(c => emojis[c]).join('')
     },
     filteredCountriesByRegion() {
       return this.groupBy(this.countries, 'region')
@@ -161,6 +223,64 @@ export default {
   },
 
   methods: {
+    login() {
+      Firebase.login().then(async () => {
+        const data = await this.getFromDB()
+
+        console.log({data})
+
+        this.selectedCities = data.selectedCities || {}
+        this.selectedCountries = data.selectedCountries || {}
+      })
+    },
+    register() {
+      Firebase.login().then(({user}) => {
+        Firebase.db()
+            .collection('usersCollection')
+            .doc(user.uid)
+            .set({
+              selectedCountries: this.selectedCountries,
+              selectedCities: this.selectedCities,
+            })
+      })
+    },
+    logout() {
+      Firebase.logout()
+    },
+    saveToDB() {
+      let data = {
+        selectedCities: this.selectedCities,
+        selectedCountries: this.selectedCountries,
+      };
+
+      window.localStorage.setItem('userData', JSON.stringify(data))
+
+      if (this.isLoggedIn) {
+        Firebase.db()
+            .collection("usersCollection")
+            .doc(this.user.data.uid)
+            .update(data)
+      }
+    },
+    async getFromDB() {
+      let data
+
+      if (this.isLoggedIn) {
+        data = Firebase.db()
+            .collection('usersCollection')
+            .doc(this.user.data.uid).get().then(result => {
+              console.log(result.data())
+          return result.data()
+        })
+      } else {
+        data = JSON.parse(window.localStorage.getItem('userData'))
+      }
+
+      return data || {
+        selectedCities: [],
+        selectedCountries: [],
+      }
+    },
     groupBy(list, props) {
       return list.reduce((a, b) => {
         (a[b[props]] = a[b[props]] || []).push(b);
@@ -170,10 +290,10 @@ export default {
     roundNumber(num) {
       return +(Math.round(num + 'e+1') + 'e-1');
     },
-    fetchGeoJson(country) {
-      if (!country) return
+    fetchGeoJson(cca3) {
+      if (!cca3) return
 
-      const countryCode = country.cca3
+      const countryCode = cca3
 
       if (countryCode in this.countryGeoData) return
 

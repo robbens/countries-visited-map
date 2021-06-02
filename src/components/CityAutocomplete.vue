@@ -5,7 +5,7 @@
       :suggestions="filteredCities"
       :get-suggestion-value="(city) => city.country"
       :input-props="{class: 'input', placeholder: 'Enter a city'}"
-      @selected="addCity($event.item.item)"
+      @selected="addCity($event.item.item.geonameid)"
   >
     <div
         slot-scope="{suggestion}"
@@ -57,10 +57,6 @@ export default {
   },
 
   watch: {
-    selected(val) {
-      window.localStorage.setItem('selectedCities', JSON.stringify(val))
-    },
-
     query: debounce(function(val) {
       const options = {
         includeScore: true,
@@ -77,22 +73,15 @@ export default {
   },
 
   created() {
-    // Add cities saved in local storage
-    const selectedCities = JSON.parse(window.localStorage.getItem('selectedCities')) || []
-    this.initCities(selectedCities)
-
     // Build Fuse.js index
     this.citiesIndex = Fuse.createIndex(['name'], this.cities)
   },
 
   methods: {
-    initCities(cities) {
-      cities.forEach(this.addCity)
-    },
     addCity(city) {
       this.query = ''
 
-      if (!this.selected.some(c => c.geonameid === city.geonameid)) {
+      if (!this.selected.some(c => c === city)) {
         this.$emit('selected', city)
       }
     },
