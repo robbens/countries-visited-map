@@ -1,38 +1,42 @@
 <template>
-  <vue-autosuggest
-      class="sm:mr-4 mb-2 sm:mb-0"
-      v-model="query"
-      :suggestions="filteredCities"
-      :get-suggestion-value="(city) => city.country"
-      :input-props="{class: 'input', placeholder: 'Enter a city'}"
-      @selected="addCity($event.item.item)"
+  <form
+      autocomplete="off"
+      @submit="$event.preventDefault()"
+      class="sm:mr-4 mb-2 sm:mb-0 flex-1"
   >
-    <div
-        slot-scope="{suggestion}"
-        style="display: flex; align-items: center;"
+    <autocomplete
+        :search="search"
+        :auto-select="true"
+        :get-result-value="getResultValue"
+        :debounce-time="200"
+        placeholder="Enter a city"
+        @submit="addCity($event.item)"
     >
-      <img
-          :src="`/flags/${suggestion.item.item.country.toLowerCase()}.png`"
-          :key="suggestion.item.item.cca2"
-          class="flex w-10 mr-4"
-      >
+      <template #result="{ result, props }">
+        <li
+            v-bind="props"
+            style="display: flex; align-items: center;"
+        >
+          <img
+              :src="`/flags/${result.item.country.toLowerCase()}.png`"
+              :key="result.item.cca2"
+              class="flex w-10 mr-4"
+          >
 
-      <div class="text-gray-800 text-left">
-        {{ suggestion.item.item.name }}, {{ getCountry(suggestion.item.item).name.common }}
-      </div>
-    </div>
-  </vue-autosuggest>
+          <div class="text-gray-800 text-left">
+            {{ result.item.name }}, {{ getCountry(result.item).name.common }}
+          </div>
+        </li>
+      </template>
+    </autocomplete>
+  </form>
 </template>
 
 <script>
 import Fuse from "fuse.js"
-import {debounce} from "lodash"
-import {VueAutosuggest} from 'vue-autosuggest'
 
 export default {
   name: "CityAutocomplete",
-
-  components: {VueAutosuggest},
 
   props: {
     cities: {
@@ -60,20 +64,6 @@ export default {
     selected(val) {
       window.localStorage.setItem('selectedCities', JSON.stringify(val))
     },
-
-    query: debounce(function(val) {
-      const options = {
-        includeScore: true,
-        keys: ['name'],
-        threshold: 0.25,
-      }
-
-      const fuse = new Fuse(this.cities, options, this.citiesIndex)
-
-      const data = fuse.search(val, {limit: 25})
-
-      this.filteredCities = [{data}]
-    }, 200),
   },
 
   created() {
@@ -86,6 +76,22 @@ export default {
   },
 
   methods: {
+    getResultValue() {
+      return ''
+    },
+    search(input) {
+      if (input.length < 1) { return [] }
+
+      const options = {
+        includeScore: true,
+        keys: ['name'],
+        threshold: 0.25,
+      }
+
+      const fuse = new Fuse(this.cities, options, this.citiesIndex)
+
+      return fuse.search(input, {limit: 25})
+    },
     initCities(cities) {
       cities.forEach(this.addCity)
     },

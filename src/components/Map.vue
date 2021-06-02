@@ -16,11 +16,11 @@
       />
 
       <div class="flex">
-        <button
-            class="bg-blue-900 mr-2 lg:mr-4 rounded-md text-white text-xs font-medium whitespace-nowrap px-4"
-            @click="modalOpen = !modalOpen"
-        >Select multiple
-        </button>
+<!--        <button-->
+<!--            class="bg-blue-900 mr-2 lg:mr-4 rounded-md text-white text-xs font-medium whitespace-nowrap px-4"-->
+<!--            @click="modalOpen = !modalOpen"-->
+<!--        >Select multiple-->
+<!--        </button>-->
 
         <div
             class="mr-2 lg:mr-4 rounded-full text-white flex items-center content-center text-xs font-medium p-3 lg:px-4 whitespace-nowrap bg-indigo-700"
@@ -34,7 +34,7 @@
             class="lg:mr-4 flex flex-1 items-center text-black cursor-pointer"
         >
           <input
-              class="input sm:w-24 w-full"
+              class="input sm:w-32 w-full"
               type="text"
               :value="selectedCountriesAsEmojis"
               onclick="this.select()"
@@ -210,57 +210,80 @@ export default {
   outline: 0;
 }
 
-.autosuggest__results-container ul {
-  width: 100%;
-  color: rgba(30, 39, 46, 1.0);
-  list-style: none;
+.autocomplete-input:focus, .autocomplete-input[aria-expanded=true] {
+  border-color: rgba(0, 0, 0, .12);
+  background-color: #fff;
+  outline: none;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, .16)
+}
+
+[data-position=below] .autocomplete-input[aria-expanded=true] {
+  border-bottom-color: transparent;
+  border-radius: 8px 8px 0 0
+}
+
+[data-position=above] .autocomplete-input[aria-expanded=true] {
+  border-top-color: transparent;
+  border-radius: 0 0 8px 8px;
+  z-index: 2
+}
+
+.autocomplete[data-loading=true]:after {
+  content: "";
+  border: 3px solid rgba(0, 0, 0, .12);
+  border-right-color: rgba(0, 0, 0, .48);
+  border-radius: 100%;
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: rotate 1s linear infinite
+}
+
+.autocomplete-result-list {
   margin: 0;
-  padding: 0.5rem 0 .5rem 0;
+  border: 1px solid rgba(0, 0, 0, .12);
+  padding: 0;
+  box-sizing: border-box;
+  max-height: 296px;
+  overflow-y: auto;
+  background: #fff;
+  list-style: none;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, .16)
 }
 
-.autosuggest__results-container li {
-  margin: 0 0 0 0;
-  border-radius: 5px;
-  padding: 0.75rem 0 0.75rem 0.75rem;
-  display: flex;
-  align-items: center;
+[data-position=below] .autocomplete-result-list {
+  margin-top: -1px;
+  border-top-color: transparent;
+  border-radius: 0 0 8px 8px;
+  padding-bottom: 8px
 }
 
-.autosuggest__results-container li:hover {
-  cursor: pointer;
+[data-position=above] .autocomplete-result-list {
+  margin-bottom: -1px;
+  border-bottom-color: transparent;
+  border-radius: 8px 8px 0 0;
+  padding-top: 8px
 }
 
-.autosuggest-container {
-  display: flex;
-  justify-content: center;
-  width: 280px;
+.autocomplete-result {
+  cursor: default;
+  padding: 12px;
 }
 
-#autosuggest {
-  width: 100%;
-  display: block;
-}
-
-.autosuggest__results-item--highlighted {
+.autocomplete-result:hover, .autocomplete-result[aria-selected=true] {
   background-color: rgba(51, 217, 178, 0.2);
 }
 
-#autosuggest {
-  position: relative;
-}
-
-.autosuggest__results {
-  overflow: scroll;
-  max-height: 80vh;
-}
-
-.autosuggest__results-container {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 100;
-  background: white;
-  width: 100%;
+@keyframes rotate {
+  0% {
+    transform: translateY(-50%) rotate(0deg)
+  }
+  to {
+    transform: translateY(-50%) rotate(359deg)
+  }
 }
 
 #modal-select-countries {
@@ -291,8 +314,10 @@ export default {
   cursor: pointer;
 }
 
-.input {
+.input, #app .autocomplete-input {
   border: 1px solid #ccc;
+  background-color: #fff;
+  background-image: none;
   border-radius: 6px;
   padding: 8px 12px;
   width: 100%;
