@@ -38,6 +38,7 @@
               type="text"
               :value="selectedCountriesAsEmojis"
               onclick="this.select()"
+              @click="selectEmojis"
               readonly
           >
         </div>
@@ -161,6 +162,11 @@ export default {
   },
 
   methods: {
+    selectEmojis() {
+        window.gtag('event', 'clicked', {
+          'event_category': 'emojis',
+        });
+    },
     groupBy(list, props) {
       return list.reduce((a, b) => {
         (a[b[props]] = a[b[props]] || []).push(b);
