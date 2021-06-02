@@ -154,8 +154,8 @@ export default {
   },
 
   watch: {
-    selectedCountries() {
-      this.selectedCountries.forEach(this.fetchGeoJson)
+    selectedCountries(val) {
+      val.forEach(this.fetchGeoJson)
     },
   },
 
