@@ -10,7 +10,7 @@
         :get-result-value="getResultValue"
         :debounce-time="200"
         placeholder="Enter a city"
-        @submit="addCity($event.item)"
+        @submit="addCity($event.item, true)"
     >
       <template #result="{ result, props }">
         <li
@@ -95,8 +95,15 @@ export default {
     initCities(cities) {
       cities.forEach(this.addCity)
     },
-    addCity(city) {
+    addCity(city, manual = false) {
       this.query = ''
+
+      if (manual) {
+        window.gtag('event', 'added', {
+          'event_category': 'cities',
+          'event_label': city.geonameid,
+        });
+      }
 
       if (!this.selected.some(c => c.geonameid === city.geonameid)) {
         this.$emit('selected', city)

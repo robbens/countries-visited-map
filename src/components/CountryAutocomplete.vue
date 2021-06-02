@@ -10,7 +10,7 @@
         :get-result-value="getResultValue"
         :debounce-time="200"
         placeholder="Enter a country"
-        @submit="addCountry($event.item)"
+        @submit="addCountry($event.item, true)"
     >
       <template #result="{ result, props }">
         <li
@@ -88,7 +88,14 @@ export default {
     initCountries(countries) {
       countries.forEach(this.addCountry)
     },
-    addCountry(country) {
+    addCountry(country, manual = false) {
+      if (manual) {
+        window.gtag('event', 'added', {
+          'event_category': 'countries',
+          'event_label': country.cca3,
+          });
+      }
+
       this.query = ''
 
       if (!this.selected.some(c => c.cca3 === country.cca3)) {
